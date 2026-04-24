@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Паспорт кабинета — Автосинхронизация</title>
+    <style>
+        :root {
+            --primary: #1e3a8a; --primary-hover: #1e40af;
+            --surface: #ffffff; --bg: #f1f5f9; --border: #e2e8f0;
+            --text: #1e293b; --text-muted: #64748b;
+            --radius: 12px; --shadow: 0 8px 24px rgba(0,0,0,0.04);
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); }
+        .app-header {
+            background: var(--surface); border-bottom: 1px solid var(--border);
+            padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .logo { display: flex; align-items: center; gap: 12px; font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+        .logo .icon { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; }
+        .container { display: flex; flex-wrap: wrap; max-width: 1400px; margin: 0 auto; padding: 24px 20px; gap: 24px; }
+        .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }
+        .table-panel { flex: 1 1 700px; }
+        .form-panel  { flex: 0 0 480px; }
+        @media (max-width: 950px) { .form-panel { flex: 1 1 100%; } }
+        .table-wrapper { overflow-x: auto; max-height: 520px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f1f5f9; text-align: left; padding: 12px 10px; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border); }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+        tr:hover td { background: #f8fafc; }
+        .empty-state { padding: 40px; text-align: center; color: var(--text-muted); }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 5px; color: var(--text); }
+        input, select {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 0.9rem; font-family: var(--font); outline: none;
+        }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
+        .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+        .error-message { color: #dc2626; font-size: 0.75rem; margin-top: 4px; display: none; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+        .status-badge { display: none; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 500; margin-top: 16px; }
+        .status-badge.success { background: #dcfce7; color: #166534; display: block; }
+        .status-badge.error   { background: #fee2e2; color: #991b1b; display: block; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff;
+            border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+        }
+        .btn.danger { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <div class="logo"><span class="icon">🏫</span><span>Паспорт кабинета</span></div>
+</header>
+<div class="container">
+    <div class="card table-panel">
+        <h2 style="margin-bottom:16px;">📋 Внесённые кабинеты</h2>
+        <div class="table-wrapper">
+            <table id="roomsTable">
+                <thead><tr><th>Здание</th><th>Номер</th><th>Название</th><th>Этаж</th><th>Площадь</th><th>Назначение</th><th>Тип</th><th>Подтип</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div id="noData" class="empty-state">Нет добавленных кабинетов</div>
+        </div>
+        <div id="syncStatus" class="status-badge"></div>
+    </div>
+    <div class="card form-panel">
+        <h2 style="margin-bottom:20px;">➕ Добавить кабинет</h2>
+        <div class="form-group"><label>Здание *</label><select id="building"><option value="">-- Выберите --</option><option>ШО1</option><option>ШО2</option><option>ШО3</option><option>ШО4</option><option>ШО5</option><option>ДО1</option><option>ДО2</option><option>ДО3</option><option>ДО4</option><option>ДО5</option><option>ДО6</option></select><div class="error-message" id="buildingError">Укажите здание</div></div>
+        <div class="form-group"><label>Номер кабинета</label><input type="text" id="roomNumber" placeholder="215"></div>
+        <div class="form-group"><label>Название кабинета</label><input type="text" id="roomName" placeholder="Кабинет физики"><div class="hint">Заполните хотя бы одно</div><div class="error-message" id="roomError">Заполните номер или название</div></div>
+        <div class="form-group"><label>Этаж *</label><input type="text" id="floor" placeholder="2"><div class="error-message" id="floorError">Обязательное поле</div></div>
+        <div class="form-group"><label>Площадь (м²) *</label><input type="number" id="area" step="any" placeholder="45.2"><div class="error-message" id="areaError">Должно быть числом</div></div>
+        <div class="form-group"><label>Адм. назначение *</label><select id="adminPurpose"><option value="">-- Выберите --</option><option>Учебный кабинет</option><option>Административный кабинет</option><option>Вспомогательный кабинет</option><option>Помещение</option></select></div>
+        <div class="form-group"><label>Макс. посадочных мест</label><input type="number" id="maxSeats" value="0" step="1"></div>
+        <div class="form-group"><label>Админ. состав</label><input type="number" id="adminStaff" value="0" step="1"></div>
+        <div class="form-group" id="teacherGroup" style="display:none;"><label>Пед. состав</label><input type="number" id="teacherStaff" value="0" step="1"></div>
+        <div class="form-group"><label>Тип кабинета *</label><select id="roomType"><option value="">-- Сначала выберите назначение --</option></select><div class="error-message" id="typeError">Выберите тип</div></div>
+        <div class="form-group" id="subtypeGroup" style="display:none;"><label>Подтип</label><select id="subtype"></select></div>
+        <div class="form-actions"><button class="btn" onclick="addRoom()">➕ Добавить</button></div>
+        <div id="formStatus" class="status-badge"></div>
+    </div>
+</div>
+<script>
+    // ---------- СПРАВОЧНИКИ ----------
+    const typeData = {
+        "Учебный кабинет": [
+            "Общеобразовательный кабинет начального, основного, среднего общего и профессионального образования",
+            "Специализированный учебный кабинет основного и среднего общего образования",
+            "Виртуальный кабинет"
+        ],
+        "Административный кабинет": [
+            "Помещение охраны", "Помещение охраны (дополнительный вход)", "Учительская",
+            "Тренерская", "Медицинский кабинет", "Методический кабинет",
+            "Кабинет АУП", "Кабинет директора", "Приемная директора",
+            "Кабинет административного работника"
+        ],
+        "Вспомогательный кабинет": [
+            "Рекреации/Коворкинг", "Библиотека", "Информационно-библиотечный центр",
+            "Актовый зал", "Кабинет индивидуальных занятий", "Кабинет для самоподготовки",
+            "Спортзал", "Снарядная", "Бассейн", "Музыкальный зал", "Тир", "Музей",
+            "Зимний сад", "Сенсорная комната", "Групповое помещение (игровая)",
+            "Групповое помещение объединённая с спальной комнатой"
+        ],
+        "Помещение": [
+            "Коридор", "Холл", "Серверная (аппаратная)", "Кроссовая (место установки кроссового ТШ)",
+            "Входная зона", "Входная зона (дополнительный вход)", "Пищеблок", "Гардероб",
+            "Раздевальная комната", "Зона питания", "Изолятор", "Прачечная",
+            "Спальная комната", "Кладовая"
+        ]
+    };
+    const subtypeData = {
+        "Общеобразовательный кабинет начального, основного, среднего общего и профессионального образования": [
+            "Учебные кабинеты (1-4 классы)",
+            "Кабинет иностранного языка (начальная школа)",
+            "Кабинет иностранного языка (основная и старшая школы)",
+            "Кабинет русского языка и литературы",
+            "Кабинет основ безопасности и защиты Родины",
+            "Кабинет биологии (универсальный кабинет без оборудования)",
+            "Кабинет географии", "Кабинет истории", "Кабинет математики",
+            "Кабинет физики (универсальный кабинет без оборудования)",
+            "Кабинет химии (универсальный кабинет без оборудования)",
+            "Кабинет информатики", "Универсальный учебный кабинет"
+        ],
+        "Специализированный учебный кабинет основного и среднего общего образования": [
+            "Кабинет информационных технологий",
+            "Специализированный кабинет биологии (с оборудованием)",
+            "Специализированный кабинет химии (с оборудованием)",
+            "Специализированный кабинет физики (с оборудованием)",
+            "Лаборантская кабинета информационных технологий",
+            "Лаборантская кабинета физики", "Лаборантская кабинета химии",
+            "Лаборантская кабинета биологии",
+            "Лабораторно-исследовательский комплекс для изучения естествознания (начальная школа)",
+            "Лабораторно-исследовательский комплекс Медиакласса",
+            "Лабораторно-исследовательский комплекс Медицинского класса",
+            "Лабораторно-исследовательский комплекс Инженерного класса",
+            "Кабинет математической технологии тип 1 (повышен)",
+            "Кабинет материальной технологии тип 1 (девочки)",
+            "Кабинет материальной технологии тип 2 (мальчики)",
+            "Зона подготовки материалов и первичной обработки заготовок",
+            "Творческая мастерская", "Медиастудия", "Робокласс", "IT-полигон"
+        ]
+    };
+
+    // ---------- ВАШ GOOGLE SCRIPT URL (вшит) ----------
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_AW1rEHbcHWPJZJSDXRw3iXDlBfGQPOrjXZi6oKAoNRhcTiPhHI9-oXpJ-IbHsaPEg/exec";
+
+    const STORAGE_KEY = 'saved_rooms_v6';
+
+    function loadRooms() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    function saveRooms(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
+
+    function renderTable() {
+        const rooms = loadRooms();
+        const tbody = document.querySelector('#roomsTable tbody');
+        const noData = document.getElementById('noData');
+        tbody.innerHTML = '';
+        noData.style.display = rooms.length ? 'none' : 'block';
+        rooms.forEach((r, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.building||''}</td><td>${r.roomNumber||''}</td><td>${r.roomName||''}</td><td>${r.floor||''}</td><td>${r.area||''}</td><td>${r.adminPurpose||''}</td><td>${r.roomType||''}</td><td>${r.subtype||''}</td><td><button class="btn danger" style="padding:2px 8px;font-size:0.75rem;" data-index="${i}">🗑</button></td>`;
+            tbody.appendChild(tr);
+        });
+        document.querySelectorAll('#roomsTable .btn.danger').forEach(b => b.onclick = (e) => {
+            const i = +e.target.dataset.index;
+            if (confirm('Удалить этот кабинет?')) {
+                const r = loadRooms(); r.splice(i,1); saveRooms(r); renderTable();
+            }
+        });
+    }
+
+    function updateTypes() {
+        const sel = document.getElementById('roomType');
+        sel.innerHTML = '<option value="">-- Выберите --</option>';
+        const p = document.getElementById('adminPurpose').value;
+        if (typeData[p]) typeData[p].forEach(t => sel.add(new Option(t,t)));
+        document.getElementById('subtype').innerHTML = '';
+        document.getElementById('subtypeGroup').style.display = 'none';
+    }
+    function updateSubtypes() {
+        const t = document.getElementById('roomType').value;
+        const grp = document.getElementById('subtypeGroup');
+        const sel = document.getElementById('subtype');
+        sel.innerHTML = '<option value="">-- Не выбран --</option>';
+        if (subtypeData[t]) {
+            subtypeData[t].forEach(s => sel.add(new Option(s,s)));
+            grp.style.display = 'block';
+        } else grp.style.display = 'none';
+    }
+    document.getElementById('adminPurpose').onchange = () => {
+        updateTypes();
+        const tg = document.getElementById('teacherGroup');
+        tg.style.display = document.getElementById('adminPurpose').value === 'Учебный кабинет' ? 'block' : 'none';
+        if (tg.style.display === 'none') document.getElementById('teacherStaff').value = '0';
+    };
+    document.getElementById('roomType').onchange = updateSubtypes;
+
+    function validateForm() {
+        let ok = true;
+        document.querySelectorAll('.error-message').forEach(e => e.style.display = 'none');
+        if (!document.getElementById('building').value) { document.getElementById('buildingError').style.display='block'; ok=false; }
+        const n = document.getElementById('roomNumber').value.trim(), m = document.getElementById('roomName').value.trim();
+        if (!n && !m) { document.getElementById('roomError').style.display='block'; ok=false; }
+        if (!document.getElementById('floor').value.trim()) { document.getElementById('floorError').style.display='block'; ok=false; }
+        const a = document.getElementById('area').value.trim();
+        if (!a || isNaN(parseFloat(a))) { document.getElementById('areaError').style.display='block'; ok=false; }
+        if (!document.getElementById('adminPurpose').value) { alert('Выберите назначение'); ok=false; }
+        if (!document.getElementById('roomType').value) { document.getElementById('typeError').style.display='block'; ok=false; }
+        return ok;
+    }
+
+    function getFormData() {
+        return {
+            building: document.getElementById('building').value,
+            roomNumber: document.getElementById('roomNumber').value.trim(),
+            roomName: document.getElementById('roomName').value.trim(),
+            floor: document.getElementById('floor').value.trim(),
+            area: document.getElementById('area').value.trim(),
+            adminPurpose: document.getElementById('adminPurpose').value,
+            maxSeats: document.getElementById('maxSeats').value || '0',
+            adminStaff: document.getElementById('adminStaff').value || '0',
+            teacherStaff: document.getElementById('teacherStaff').value || '0',
+            roomType: document.getElementById('roomType').value,
+            subtype: document.getElementById('subtype').value || ''
+        };
+    }
+
+    function resetForm() {
+        ['building','roomNumber','roomName','floor','area','adminPurpose','maxSeats','adminStaff','teacherStaff'].forEach(id => {
+            document.getElementById(id).value = (id.endsWith('Seats')||id.endsWith('Staff')) ? '0' : '';
+        });
+        document.getElementById('roomType').innerHTML = '<option value="">-- Сначала выберите назначение --</option>';
+        document.getElementById('subtype').innerHTML = '';
+        document.getElementById('teacherGroup').style.display = 'none';
+        document.getElementById('subtypeGroup').style.display = 'none';
+    }
+
+    async function syncToGoogleSheets(rooms) {
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'syncAll',
+                    rooms: rooms.map(r => [r.building, r.roomNumber, r.roomName, r.floor, r.area, r.adminPurpose, r.maxSeats, r.adminStaff, r.teacherStaff, r.roomType, r.subtype])
+                })
+            });
+            return true;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    }
+
+    async function addRoom() {
+        if (!validateForm()) return;
+        const roomData = getFormData();
+        const rooms = loadRooms();
+        rooms.push(roomData);
+        saveRooms(rooms);
+        renderTable();
+        resetForm();
+
+        const success = await syncToGoogleSheets(rooms);
+        const st = document.getElementById('formStatus');
+        st.className = 'status-badge ' + (success ? 'success' : 'error');
+        st.textContent = success ? '✅ Успешно сохранено и отправлено в общую таблицу' : '⚠ Добавлено локально, ошибка синхронизации';
+        setTimeout(() => st.className = 'status-badge', 4000);
+
+        const syncSt = document.getElementById('syncStatus');
+        syncSt.className = 'status-badge ' + (success ? 'success' : 'error');
+        syncSt.textContent = success ? '✅ Последняя синхронизация успешна' : '⚠ Ошибка последней синхронизации';
+        setTimeout(() => syncSt.className = 'status-badge', 4000);
+    }
+
+    window.onload = () => {
+        renderTable();
+        updateTypes();
+    };
+</script>
+</body>
+</html>
