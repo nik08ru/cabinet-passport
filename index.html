@@ -70,7 +70,16 @@
     </div>
     <div class="card form-panel">
         <h2 style="margin-bottom:20px;">➕ Добавить кабинет</h2>
-        <div class="form-group"><label>Здание *</label><select id="building"><option value="">-- Выберите --</option><option>ШО1</option><option>ШО2</option><option>ШО3</option><option>ШО4</option><option>ШО5</option><option>ДО1</option><option>ДО2</option><option>ДО3</option><option>ДО4</option><option>ДО5</option><option>ДО6</option></select><div class="error-message" id="buildingError">Укажите здание</div></div>
+        <div class="form-group">
+            <label>Здание *</label>
+            <select id="building">
+                <option value="">-- Выберите --</option>
+                <option>ШО1</option><option>ШО2</option><option>ШО3</option><option>ШО4</option><option>ШО5</option>
+                <option>ДО1</option><option>ДО2</option><option>ДО3</option><option>ДО4</option><option>ДО5</option><option>ДО6</option>
+                <option>ДО7</option>
+            </select>
+            <div class="error-message" id="buildingError">Укажите здание</div>
+        </div>
         <div class="form-group"><label>Номер кабинета</label><input type="text" id="roomNumber" placeholder="215"></div>
         <div class="form-group"><label>Название кабинета</label><input type="text" id="roomName" placeholder="Кабинет физики"><div class="hint">Заполните хотя бы одно</div><div class="error-message" id="roomError">Заполните номер или название</div></div>
         <div class="form-group"><label>Этаж *</label><input type="text" id="floor" placeholder="2"><div class="error-message" id="floorError">Обязательное поле</div></div>
