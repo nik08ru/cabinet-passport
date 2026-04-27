@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Паспорт кабинета — Автосинхронизация</title>
+    <title>Паспорт кабинета — Автосинхронизация по зданиям</title>
     <style>
         :root {
             --primary: #1e3a8a; --primary-hover: #1e40af;
@@ -95,7 +95,6 @@
     </div>
 </div>
 <script>
-    // ---------- СПРАВОЧНИКИ ----------
     const typeData = {
         "Учебный кабинет": [
             "Общеобразовательный кабинет начального, основного, среднего общего и профессионального образования",
@@ -155,10 +154,8 @@
         ]
     };
 
-    // ---------- ВАШ GOOGLE SCRIPT URL ----------
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_AW1rEHbcHWPJZJSDXRw3iXDlBfGQPOrjXZi6oKAoNRhcTiPhHI9-oXpJ-IbHsaPEg/exec";
-
-    const STORAGE_KEY = 'saved_rooms_v7'; // новая версия, чтобы не конфликтовать
+    const STORAGE_KEY = 'saved_rooms_v8';
 
     function loadRooms() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
     function saveRooms(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
@@ -248,7 +245,6 @@
         document.getElementById('subtypeGroup').style.display = 'none';
     }
 
-    // Отправляем только один кабинет
     async function sendSingleRoom(room) {
         const row = [room.building, room.roomNumber, room.roomName, room.floor, room.area,
                      room.adminPurpose, room.maxSeats, room.adminStaff, room.teacherStaff,
@@ -258,7 +254,7 @@
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'addRoom', room: row })
+                body: JSON.stringify({ action: 'addRoom', building: room.building, room: row })
             });
             return true;
         } catch (e) {
@@ -270,24 +266,21 @@
     async function addRoom() {
         if (!validateForm()) return;
         const roomData = getFormData();
-        // Сохраняем локально
         const rooms = loadRooms();
         rooms.push(roomData);
         saveRooms(rooms);
         renderTable();
         resetForm();
 
-        // Отправляем только эту запись в общую таблицу
         const success = await sendSingleRoom(roomData);
-
         const st = document.getElementById('formStatus');
         st.className = 'status-badge ' + (success ? 'success' : 'error');
-        st.textContent = success ? '✅ Добавлено в общую таблицу' : '⚠ Локально сохранено, ошибка сети';
+        st.textContent = success ? '✅ Добавлено в лист ' + roomData.building : '⚠ Локально сохранено, ошибка сети';
         setTimeout(() => st.className = 'status-badge', 4000);
 
         const syncSt = document.getElementById('syncStatus');
         syncSt.className = 'status-badge ' + (success ? 'success' : 'error');
-        syncSt.textContent = success ? '✅ Последняя отправка успешна' : '⚠ Ошибка отправки';
+        syncSt.textContent = success ? '✅ Отправлено в Google Таблицы' : '⚠ Ошибка отправки';
         setTimeout(() => syncSt.className = 'status-badge', 4000);
     }
 
