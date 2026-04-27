@@ -154,8 +154,10 @@
         ]
     };
 
+    // Ваш URL скрипта (вставьте актуальный после развёртывания)
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr_AW1rEHbcHWPJZJSDXRw3iXDlBfGQPOrjXZi6oKAoNRhcTiPhHI9-oXpJ-IbHsaPEg/exec";
-    const STORAGE_KEY = 'saved_rooms_v8';
+
+    const STORAGE_KEY = 'saved_rooms_v9';
 
     function loadRooms() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
     function saveRooms(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
@@ -246,15 +248,28 @@
     }
 
     async function sendSingleRoom(room) {
-        const row = [room.building, room.roomNumber, room.roomName, room.floor, room.area,
-                     room.adminPurpose, room.maxSeats, room.adminStaff, room.teacherStaff,
-                     room.roomType, room.subtype];
+        const row = [
+            room.roomNumber,
+            room.roomName,
+            room.floor,
+            room.area,
+            room.adminPurpose,
+            room.maxSeats,
+            room.adminStaff,
+            room.teacherStaff,
+            room.roomType,
+            room.subtype
+        ];
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'addRoom', building: room.building, room: row })
+                body: JSON.stringify({
+                    action: 'addRoom',
+                    building: room.building,
+                    room: row
+                })
             });
             return true;
         } catch (e) {
@@ -275,7 +290,7 @@
         const success = await sendSingleRoom(roomData);
         const st = document.getElementById('formStatus');
         st.className = 'status-badge ' + (success ? 'success' : 'error');
-        st.textContent = success ? '✅ Добавлено в лист ' + roomData.building : '⚠ Локально сохранено, ошибка сети';
+        st.textContent = success ? `✅ Добавлено в лист «${roomData.building}»` : '⚠ Локально сохранено, ошибка сети';
         setTimeout(() => st.className = 'status-badge', 4000);
 
         const syncSt = document.getElementById('syncStatus');
